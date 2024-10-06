@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Product Details</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script> <!-- Load GIS script -->
+</head>
+<body>
+    <h2>Product Details</h2>
+    <div id="productDetails"></div>
+    
+    <script>
+        const SHEET_ID = '162AXvIrnTK0vG1zaEduHzls7mWuAerWmIUW7kD1LYTQ';  // Your Google Sheet ID
+        const SHEET_NAME = 'Sheet1';  // Your sheet name
+        let accessToken = '';  // This will hold the OAuth access token
+
+        // Load data from Google Sheets
+        async function loadData() {
+            const response = await gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SHEET_ID,
+                range: `${SHEET_NAME}!A:D`,  // Adjust range as needed
+            });
+            
+            const data = response.result.values;
+            if (data.length) {
+                displayData(data);
+            } else {
+                document.getElementById('productDetails').innerText = 'No data found.';
+            }
+        }
+
+        // Display the retrieved product details
+        function displayData(data) {
+            const productDetailsDiv = document.getElementById('productDetails');
+            data.forEach((row, index) => {
+                const productInfo = `Row ${index}: ${row.join(', ')}`;
+                productDetailsDiv.innerHTML += `<p>${productInfo}</p>`;
+            });
+        }
+
+        // Set file permissions to public
+        async function setDriveFilePublic(fileId) {
+            if (!accessToken) {
+                console.error('Access token is missing.');
+                return;
+            }
+
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'reader',
+                    type: 'anyone'
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error setting file public:', error);
+                alert('Error making file public: ' + error.message);
+                return;
+            }
+
+            console.log('File made public:', fileId);
+        }
+
+        // Initialize the Google Identity Services (GIS) client for OAuth
+        function handleCredentialResponse(response) {
+            accessToken = response.credential;
+            gapi.load('client', initClient);  // Initialize GAPI client after successful authentication
+        }
+
+        function initClient() {
+            gapi.client.init({
+                'apiKey': 'AIzaSyB5_Aa61tmrVMjJdllV7fukVB9ala-3s8M',  // Your API Key
+                'discoveryDocs': [
+                    'https://sheets.googleapis.com/$discovery/rest?version=v4',
+                    'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+                ],
+            }).then(loadData);  // Load the product data from Google Sheets
+        }
+
+        window.onload = function() {
+            google.accounts.id.initialize({
+                client_id: '14933292708-rtaukchv750vrf9ocbhd7p42h9618829.apps.googleusercontent.com',
+                callback: handleCredentialResponse
+            });
+
+            google.accounts.id.prompt();  // Display the sign-in prompt
+        };
+    </script>
+</body>
+</html>

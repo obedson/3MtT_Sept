@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Product to Google Drive & Insert to Sheet</title>
+</head>
+<body>
+    <h2>Upload Product Information</h2>
+    
+    <label for="productDesc">Product Description:</label>
+    <input type="text" id="productDesc" placeholder="Enter product description"><br><br>
+    
+    <label for="productPrice">Product Price:</label>
+    <input type="number" id="productPrice" placeholder="Enter product price"><br><br>
+    
+    <label for="sellerPhone">Seller Phone Number:</label>
+    <input type="text" id="sellerPhone" placeholder="Enter seller phone number"><br><br>
+    
+    <label for="fileInput">Upload Product Image:</label>
+    <input type="file" id="fileInput" accept="image/*"><br><br>
+    
+    <button id="uploadBtn" onclick="handleAuthClick()" disabled>Upload & Insert to Google Sheet</button>
+    
+    <br><br>
+    
+    <h3>Public URL:</h3>
+    <input type="text" id="publicUrl" readonly>
+    <button onclick="copyUrl()">Copy URL</button>
+
+    <!-- Google Identity Services Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Load GAPI client library -->
+    <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+
+    <script>
+        let accessToken = '';
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        const SHEET_ID = '162AXvIrnTK0vG1zaEduHzls7mWuAerWmIUW7kD1LYTQ';  // Replace with your Google Sheet ID
+        const SHEET_NAME = 'Sheet1';  // Replace with the name of your sheet
+
+        // Load the GAPI client library
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        // Initialize the GAPI client with the API key
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                'apiKey': 'AIzaSyB5_Aa61tmrVMjJdllV7fukVB9ala-3s8M',  // Replace with your Google API key
+                'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/sheets/v4/rest'],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        // Load the Google Identity Services library
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '14933292708-rtaukchv750vrf9ocbhd7p42h9618829.apps.googleusercontent.com',  // Replace with your client ID
+                scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',  // Updated to include full Drive permission
+                callback: '',  // Will be set later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        // Enable the upload button when both GAPI and GIS are initialized
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById("uploadBtn").disabled = false;
+            }
+        }
+
+        // Handle the authentication process
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                accessToken = gapi.client.getToken().access_token;
+
+                if (!accessToken) {
+                    console.error('Access token is not available.');
+                    return;
+                }
+                uploadFile();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        // Upload the selected file to Google Drive
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput').files[0];
+            
+            if (!fileInput) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            const metadata = {
+                'name': fileInput.name,
+                'mimeType': fileInput.type,
+            };
+
+            const formData = new FormData();
+            formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            formData.append('file', fileInput);
+
+            fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+                method: 'POST',
+                headers: new Headers({ 
+                    'Authorization': 'Bearer ' + accessToken
+                }),
+                body: formData,
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Upload failed: ' + response.statusText);
+                }
+                return response.json();
+            }).then(file => {
+                const publicUrl = `https://drive.google.com/uc?id=${file.id}`;
+                document.getElementById('publicUrl').value = publicUrl;
+                insertToSheet(publicUrl, file.id);  // Pass file.id to insertToSheet
+            }).catch(error => console.error('Error during file upload:', error));
+        }
+
+        // Insert the product details and image URL into Google Sheets
+        function insertToSheet(imageUrl, fileId) {  // Accept fileId as an argument
+            const productDesc = document.getElementById('productDesc').value;
+            const productPrice = document.getElementById('productPrice').value;
+            const sellerPhone = document.getElementById('sellerPhone').value;
+
+            if (!productDesc || !productPrice || !sellerPhone) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            // Create WhatsApp link from phone number
+            const whatsappLink = `https://wa.me/${sellerPhone.replace(/\D/g, '')}`;
+
+            const values = [
+                [productDesc, productPrice, whatsappLink, imageUrl]
+            ];
+
+            const body = {
+                values: values
+            };
+
+            gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: SHEET_ID,
+                range: `${SHEET_NAME}!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: body
+            }).then((response) => {
+                console.log('Sheet updated', response);
+                alert('Product details successfully inserted into Google Sheet');
+                // Now make the file public
+                makeFilePublic(fileId);  // Pass the file ID to make it public
+            }).catch((error) => {
+                console.error('Error inserting into Google Sheet:', error);
+            });
+        }
+
+        // Function to make the uploaded file public
+        function makeFilePublic(fileId) {
+            return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                method: 'POST',
+                headers: new Headers({
+                    'Authorization': 'Bearer ' + accessToken,
+                    'Content-Type': 'application/json'
+                }),
+                body: JSON.stringify({
+                    role: 'reader',
+                    type: 'anyone'
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to make file public: ${response.statusText} (${response.status})`);
+                }
+                console.log('File made public:', fileId);
+            }).catch(error => {
+                console.error('Error making file public:', error);
+                alert('Error making file public: ' + error.message);
+            });
+        }
+
+        // Copy the public URL to the clipboard
+        function copyUrl() {
+            const publicUrlField = document.getElementById("publicUrl");
+            if (publicUrlField.value) {
+                publicUrlField.select();
+                document.execCommand("copy");
+                alert("URL copied to clipboard");
+            } else {
+                alert("No URL to copy!");
+            }
+        }
+
+        // Initialize Google Identity Services and GAPI
+        window.onload = function() {
+            gapiLoaded();  // Call gapiLoaded directly
+            gisLoaded();
+        };
+    </script>
+</body>
+</html>
