@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Product Details</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script> <!-- Load GIS script -->
+    <script src="https://apis.google.com/js/api.js"></script> <!-- Load GAPI script -->
 </head>
 <body>
     <h2>Product Details</h2>
@@ -17,24 +18,30 @@
 
         // Load data from Google Sheets
         async function loadData() {
-            const response = await gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SHEET_ID,
-                range: `${SHEET_NAME}!A:D`,  // Adjust range as needed
-            });
-            
-            const data = response.result.values;
-            if (data.length) {
-                displayData(data);
-            } else {
-                document.getElementById('productDetails').innerText = 'No data found.';
+            try {
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: SHEET_ID,
+                    range: `${SHEET_NAME}!A:D`,  // Adjust range as needed
+                });
+                
+                const data = response.result.values;
+                if (data && data.length) {
+                    displayData(data);
+                } else {
+                    document.getElementById('productDetails').innerText = 'No data found.';
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('productDetails').innerText = 'Error loading data.';
             }
         }
 
         // Display the retrieved product details
         function displayData(data) {
             const productDetailsDiv = document.getElementById('productDetails');
+            productDetailsDiv.innerHTML = '';  // Clear previous content
             data.forEach((row, index) => {
-                const productInfo = `Row ${index}: ${row.join(', ')}`;
+                const productInfo = `Row ${index + 1}: ${row.join(', ')}`;
                 productDetailsDiv.innerHTML += `<p>${productInfo}</p>`;
             });
         }
@@ -46,51 +53,60 @@
                 return;
             }
 
-            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    role: 'reader',
-                    type: 'anyone'
-                })
-            });
+            try {
+                const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'reader',
+                        type: 'anyone'
+                    })
+                });
 
-            if (!response.ok) {
-                const error = await response.json();
-                console.error('Error setting file public:', error);
-                alert('Error making file public: ' + error.message);
-                return;
+                if (response.ok) {
+                    console.log('File made public:', fileId);
+                } else {
+                    const error = await response.json();
+                    console.error('Error setting file public:', error);
+                    alert('Error making file public: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error setting file permissions:', error);
             }
-
-            console.log('File made public:', fileId);
         }
 
-        // Initialize the Google Identity Services (GIS) client for OAuth
+        // Handle the token response after user signs in
         function handleCredentialResponse(response) {
-            accessToken = response.credential;
-            gapi.load('client', initClient);  // Initialize GAPI client after successful authentication
+            accessToken = response.credential;  // Store the credential from GIS
+            gapi.load('client', initClient);  // Load GAPI client after successful sign-in
         }
 
+        // Initialize GAPI client
         function initClient() {
             gapi.client.init({
-                'apiKey': 'AIzaSyB5_Aa61tmrVMjJdllV7fukVB9ala-3s8M',  // Your API Key
-                'discoveryDocs': [
+                apiKey: 'AIzaSyB5_Aa61tmrVMjJdllV7fukVB9ala-3s8M',  // Your API Key
+                discoveryDocs: [
                     'https://sheets.googleapis.com/$discovery/rest?version=v4',
                     'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
                 ],
-            }).then(loadData);  // Load the product data from Google Sheets
+            }).then(loadData)  // Load data after initializing the client
+            .catch(error => {
+                console.error('Error initializing GAPI client:', error);
+                document.getElementById('productDetails').innerText = 'Error initializing GAPI client.';
+            });
         }
 
+        // Load the Google Identity Services (GIS) client and prompt sign-in
         window.onload = function() {
             google.accounts.id.initialize({
                 client_id: '14933292708-rtaukchv750vrf9ocbhd7p42h9618829.apps.googleusercontent.com',
                 callback: handleCredentialResponse
             });
 
-            google.accounts.id.prompt();  // Display the sign-in prompt
+            google.accounts.id.prompt();  // Show the sign-in prompt
         };
     </script>
 </body>
