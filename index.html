@@ -50,11 +50,15 @@
         // Function to display product details
         function displayFirebaseData(product) {
             const productDetailsDiv = document.getElementById('productDetails');
+
+            // Construct WhatsApp link with the correct format
+            const whatsappLink = `https://wa.me/${product.sellerPhone.replace(/\D/g, '')}`;
+
             const productInfo = `
                 <img src="${product.imageUrl}" alt="Product Image" style="max-width: 300px; height: auto;">
                 <p><strong>Description:</strong> ${product.description}</p>
                 <p><strong>Price:</strong> ${product.price}</p>
-                <button onclick="redirectToWhatsApp('${product.whatsappLink}')">Buy Now</button>
+                <button onclick="redirectToWhatsApp('${whatsappLink}')">Buy Now</button>
                 <hr>
             `;
             productDetailsDiv.innerHTML += productInfo;
