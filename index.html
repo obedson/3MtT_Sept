@@ -54,7 +54,8 @@
                 <p>Description: ${product.description}</p>
                 <p>Price: ${product.price}</p>
                 <p>WhatsApp: <a href="${product.whatsappLink}" target="_blank">${product.whatsappLink}</a></p>
-                <p>Image URL: <a href="${product.imageUrl}" target="_blank">${product.imageUrl}</a></p>
+                <img src="${product.imageUrl}" alt="Product Image" style="max-width: 300px; height: auto;">
+
                 <hr>
             `;
             productDetailsDiv.innerHTML += productInfo;
