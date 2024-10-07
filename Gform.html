@@ -4,34 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Product to Firebase</title>
-    <!-- Add Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage.js"></script>
-</head>
-<body>
-    <h2>Upload Product Information</h2>
-    
-    <label for="productDesc">Product Description:</label>
-    <input type="text" id="productDesc" placeholder="Enter product description"><br><br>
-    
-    <label for="productPrice">Product Price:</label>
-    <input type="number" id="productPrice" placeholder="Enter product price"><br><br>
-    
-    <label for="sellerPhone">Seller Phone Number:</label>
-    <input type="text" id="sellerPhone" placeholder="Enter seller phone number"><br><br>
-    
-    <label for="fileInput">Upload Product Image:</label>
-    <input type="file" id="fileInput" accept="image/*"><br><br>
-    
-    <button id="uploadBtn" onclick="uploadProduct()">Upload & Save to Firebase</button>
+    <script type="module">
+        // Import Firebase SDK modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
 
-    <h3>Public URL:</h3>
-    <input type="text" id="publicUrl" readonly>
-    <button onclick="copyUrl()">Copy URL</button>
-
-    <script>
         // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
@@ -44,27 +23,27 @@
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
 
-        // Sign in the user using Firebase Auth (Google Sign-in)
+        // Function to sign in the user using Firebase Auth (Google Sign-in)
         async function signIn() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            await auth.signInWithPopup(provider).then(result => {
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
                 console.log("Signed in as:", result.user.displayName);
-            }).catch(error => {
+            } catch (error) {
                 console.error("Error signing in:", error);
-            });
+            }
         }
 
         // Function to upload the product image to Firebase Storage
         async function uploadImage(file) {
-            const storageRef = storage.ref();
-            const fileRef = storageRef.child('products/' + file.name);
-            await fileRef.put(file);
-            return fileRef.getDownloadURL();
+            const storageRef = ref(storage, 'products/' + file.name);
+            await uploadBytes(storageRef, file);
+            return getDownloadURL(storageRef);
         }
 
         // Function to upload product details to Firestore
@@ -87,13 +66,13 @@
                 const whatsappLink = `https://wa.me/${sellerPhone.replace(/\D/g, '')}`;
 
                 // Add product to Firestore
-                const docRef = await db.collection('products').add({
+                const docRef = await addDoc(collection(db, 'products'), {
                     description: productDesc,
                     price: productPrice,
                     sellerPhone: sellerPhone,
                     whatsappLink: whatsappLink,
                     imageUrl: imageUrl,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 });
 
                 console.log("Product added with ID:", docRef.id);
@@ -124,5 +103,26 @@
             signIn();
         };
     </script>
+</head>
+<body>
+    <h2>Upload Product Information</h2>
+    
+    <label for="productDesc">Product Description:</label>
+    <input type="text" id="productDesc" placeholder="Enter product description"><br><br>
+    
+    <label for="productPrice">Product Price:</label>
+    <input type="number" id="productPrice" placeholder="Enter product price"><br><br>
+    
+    <label for="sellerPhone">Seller Phone Number:</label>
+    <input type="text" id="sellerPhone" placeholder="Enter seller phone number"><br><br>
+    
+    <label for="fileInput">Upload Product Image:</label>
+    <input type="file" id="fileInput" accept="image/*"><br><br>
+    
+    <button id="uploadBtn" onclick="uploadProduct()">Upload & Save to Firebase</button>
+
+    <h3>Public URL:</h3>
+    <input type="text" id="publicUrl" readonly>
+    <button onclick="copyUrl()">Copy URL</button>
 </body>
 </html>
