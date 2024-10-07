@@ -5,19 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Product Details</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script> <!-- Load GIS script -->
-    <script src="https://apis.google.com/js/api.js"></script> <!-- Load GAPI script -->
-</head>
-<body>
-    <h2>Product Details</h2>
-    <div id="productDetails"></div>
-    
-    <script>
-        const SHEET_ID = '162AXvIrnTK0vG1zaEduHzls7mWuAerWmIUW7kD1LYTQ';  // Your Google Sheet ID
-        const SHEET_NAME = 'Sheet1';  // Your sheet name
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js"; // For Realtime Database
+        // import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js"; // Uncomment for Firestore
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
+            authDomain: "mtt-d130b.firebaseapp.com",
+            projectId: "mtt-d130b",
+            storageBucket: "mtt-d130b.appspot.com",
+            messagingSenderId: "103379427385",
+            appId: "1:103379427385:web:672ee6ff76784954082de8",
+            measurementId: "G-YXQCJLM1T9"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app); // For Realtime Database
+        // const db = getFirestore(app); // Uncomment for Firestore
+
         let accessToken = '';  // This will hold the OAuth access token
 
         // Load data from Google Sheets
-        async function loadData() {
+        async function loadGoogleSheetData() {
+            const SHEET_ID = '162AXvIrnTK0vG1zaEduHzls7mWuAerWmIUW7kD1LYTQ';  // Your Google Sheet ID
+            const SHEET_NAME = 'Sheet1';  // Your sheet name
+            
             try {
                 const response = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: SHEET_ID,
@@ -26,18 +42,18 @@
                 
                 const data = response.result.values;
                 if (data && data.length) {
-                    displayData(data);
+                    displayGoogleSheetData(data);
                 } else {
                     document.getElementById('productDetails').innerText = 'No data found.';
                 }
             } catch (error) {
-                console.error('Error fetching data:', error);
-                document.getElementById('productDetails').innerText = 'Error loading data.';
+                console.error('Error fetching data from Google Sheets:', error);
+                document.getElementById('productDetails').innerText = 'Error loading data from Google Sheets.';
             }
         }
 
-        // Display the retrieved product details
-        function displayData(data) {
+        // Display the retrieved product details from Google Sheets
+        function displayGoogleSheetData(data) {
             const productDetailsDiv = document.getElementById('productDetails');
             productDetailsDiv.innerHTML = '';  // Clear previous content
             data.forEach((row, index) => {
@@ -46,36 +62,35 @@
             });
         }
 
-        // Set file permissions to public
-        async function setDriveFilePublic(fileId) {
-            if (!accessToken) {
-                console.error('Access token is missing.');
-                return;
-            }
-
+        // Load data from Firebase
+        async function loadFirebaseData() {
+            const productDetailsDiv = document.getElementById('productDetails');
+            productDetailsDiv.innerHTML = '';  // Clear previous content
+            
             try {
-                const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        role: 'reader',
-                        type: 'anyone'
-                    })
-                });
+                // Fetch data from Realtime Database
+                const dbRef = ref(db, 'products'); // Replace 'products' with your actual database reference
+                const snapshot = await get(dbRef);
 
-                if (response.ok) {
-                    console.log('File made public:', fileId);
+                if (snapshot.exists()) {
+                    const products = snapshot.val(); // Get all products
+                    for (const key in products) {
+                        displayFirebaseData(products[key]); // Display each product
+                    }
                 } else {
-                    const error = await response.json();
-                    console.error('Error setting file public:', error);
-                    alert('Error making file public: ' + error.message);
+                    productDetailsDiv.innerText = 'No data found in Firebase.';
                 }
             } catch (error) {
-                console.error('Error setting file permissions:', error);
+                console.error('Error fetching data from Firebase:', error);
+                productDetailsDiv.innerText = 'Error loading data from Firebase.';
             }
+        }
+
+        // Display the retrieved product details from Firebase
+        function displayFirebaseData(data) {
+            const productDetailsDiv = document.getElementById('productDetails');
+            const productInfo = `Description: ${data.description}, Price: ${data.price}, WhatsApp: <a href="${data.whatsapp}" target="_blank">${data.whatsapp}</a>, Image URL: <a href="${data.imageUrl}" target="_blank">${data.imageUrl}</a>`;
+            productDetailsDiv.innerHTML += `<p>${productInfo}</p>`;
         }
 
         // Handle the token response after user signs in
@@ -92,8 +107,10 @@
                     'https://sheets.googleapis.com/$discovery/rest?version=v4',
                     'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
                 ],
-            }).then(loadData)  // Load data after initializing the client
-            .catch(error => {
+            }).then(() => {
+                loadGoogleSheetData(); // Load Google Sheets data after initializing the client
+                loadFirebaseData(); // Load Firebase data
+            }).catch(error => {
                 console.error('Error initializing GAPI client:', error);
                 document.getElementById('productDetails').innerText = 'Error initializing GAPI client.';
             });
@@ -109,5 +126,9 @@
             google.accounts.id.prompt();  // Show the sign-in prompt
         };
     </script>
+</head>
+<body>
+    <h2>Product Details</h2>
+    <div id="productDetails"></div>
 </body>
 </html>
