@@ -7,7 +7,7 @@
     <script type="module">
         // Import Firebase SDK modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
 
@@ -28,12 +28,12 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // Function to sign in the user using Firebase Auth (Google Sign-in)
+        // Function to sign in the user using Firebase Auth (Google Sign-in) with redirect
         async function signIn() {
             const provider = new GoogleAuthProvider();
             try {
-                const result = await signInWithPopup(auth, provider);
-                console.log("Signed in as:", result.user.displayName);
+                await signInWithRedirect(auth, provider);
+                console.log("Redirecting for sign in...");
             } catch (error) {
                 console.error("Error signing in:", error);
             }
@@ -46,8 +46,8 @@
             return getDownloadURL(storageRef);
         }
 
-        // Function to upload product details to Firestore
-        async function uploadProduct() {
+        // Declare uploadProduct in the global scope
+        window.uploadProduct = async function() {
             const productDesc = document.getElementById('productDesc').value;
             const productPrice = document.getElementById('productPrice').value;
             const sellerPhone = document.getElementById('sellerPhone').value;
@@ -84,10 +84,10 @@
                 console.error("Error uploading product:", error);
                 alert("Error uploading product.");
             }
-        }
+        };
 
         // Copy the public URL to the clipboard
-        function copyUrl() {
+        window.copyUrl = function() {
             const publicUrlField = document.getElementById("publicUrl");
             if (publicUrlField.value) {
                 publicUrlField.select();
@@ -96,7 +96,7 @@
             } else {
                 alert("No URL to copy!");
             }
-        }
+        };
 
         // Automatically sign in on page load
         window.onload = function() {
