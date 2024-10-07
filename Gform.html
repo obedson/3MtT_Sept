@@ -4,105 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Product to Firebase</title>
-    <script type="module">
-        // Import Firebase SDK modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
-
-        // Your Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
-            authDomain: "mtt-d130b.firebaseapp.com",
-            projectId: "mtt-d130b",
-            storageBucket: "mtt-d130b.appspot.com",
-            messagingSenderId: "103379427385",
-            appId: "1:103379427385:web:672ee6ff76784954082de8",
-            measurementId: "G-YXQCJLM1T9"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
-
-        // Function to sign in the user using Firebase Auth (Google Sign-in) with redirect
-        async function signIn() {
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithRedirect(auth, provider);
-                console.log("Redirecting for sign in...");
-            } catch (error) {
-                console.error("Error signing in:", error);
-            }
-        }
-
-        // Function to upload the product image to Firebase Storage
-        async function uploadImage(file) {
-            const storageRef = ref(storage, 'products/' + file.name);
-            await uploadBytes(storageRef, file);
-            return getDownloadURL(storageRef);
-        }
-
-        // Declare uploadProduct in the global scope
-        window.uploadProduct = async function() {
-            const productDesc = document.getElementById('productDesc').value;
-            const productPrice = document.getElementById('productPrice').value;
-            const sellerPhone = document.getElementById('sellerPhone').value;
-            const fileInput = document.getElementById('fileInput').files[0];
-
-            if (!productDesc || !productPrice || !sellerPhone || !fileInput) {
-                alert("Please fill all fields and select an image.");
-                return;
-            }
-
-            try {
-                // Upload image and get the URL
-                const imageUrl = await uploadImage(fileInput);
-
-                // Create a WhatsApp link
-                const whatsappLink = `https://wa.me/${sellerPhone.replace(/\D/g, '')}`;
-
-                // Add product to Firestore
-                const docRef = await addDoc(collection(db, 'products'), {
-                    description: productDesc,
-                    price: productPrice,
-                    sellerPhone: sellerPhone,
-                    whatsappLink: whatsappLink,
-                    imageUrl: imageUrl,
-                    createdAt: serverTimestamp()
-                });
-
-                console.log("Product added with ID:", docRef.id);
-
-                // Display the public URL
-                document.getElementById('publicUrl').value = imageUrl;
-                alert("Product details uploaded to Firebase.");
-            } catch (error) {
-                console.error("Error uploading product:", error);
-                alert("Error uploading product.");
-            }
-        };
-
-        // Copy the public URL to the clipboard
-        window.copyUrl = function() {
-            const publicUrlField = document.getElementById("publicUrl");
-            if (publicUrlField.value) {
-                publicUrlField.select();
-                document.execCommand("copy");
-                alert("URL copied to clipboard");
-            } else {
-                alert("No URL to copy!");
-            }
-        };
-
-        // Automatically sign in on page load
-        window.onload = function() {
-            signIn();
-        };
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage.js"></script>
 </head>
 <body>
     <h2>Upload Product Information</h2>
@@ -124,5 +29,105 @@
     <h3>Public URL:</h3>
     <input type="text" id="publicUrl" readonly>
     <button onclick="copyUrl()">Copy URL</button>
+
+    <script>
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
+            authDomain: "mtt-d130b.firebaseapp.com",
+            projectId: "mtt-d130b",
+            storageBucket: "mtt-d130b.appspot.com",
+            messagingSenderId: "103379427385",
+            appId: "1:103379427385:web:672ee6ff76784954082de8",
+            measurementId: "G-YXQCJLM1T9"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        window.onload = function() {
+            // Check the authentication state on page load
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    console.log("User is signed in:", user.displayName);
+                } else {
+                    signIn();  // If not signed in, initiate sign-in
+                }
+            });
+        };
+
+        // Sign in the user using Firebase Auth (Google Sign-in)
+        async function signIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await auth.signInWithPopup(provider).then(result => {
+                console.log("Signed in as:", result.user.displayName);
+            }).catch(error => {
+                console.error("Error signing in:", error);
+            });
+        }
+
+        // Function to upload the product image to Firebase Storage
+        async function uploadImage(file) {
+            const storageRef = storage.ref();
+            const fileRef = storageRef.child('products/' + file.name);
+            await fileRef.put(file);
+            return fileRef.getDownloadURL();
+        }
+
+        // Function to upload product details to Firestore
+        async function uploadProduct() {
+            const productDesc = document.getElementById('productDesc').value;
+            const productPrice = document.getElementById('productPrice').value;
+            const sellerPhone = document.getElementById('sellerPhone').value;
+            const fileInput = document.getElementById('fileInput').files[0];
+
+            if (!productDesc || !productPrice || !sellerPhone || !fileInput) {
+                alert("Please fill all fields and select an image.");
+                return;
+            }
+
+            try {
+                // Upload image and get the URL
+                const imageUrl = await uploadImage(fileInput);
+
+                // Create a WhatsApp link
+                const whatsappLink = `https://wa.me/${sellerPhone.replace(/\D/g, '')}`;
+
+                // Add product to Firestore
+                const docRef = await db.collection('products').add({
+                    description: productDesc,
+                    price: productPrice,
+                    sellerPhone: sellerPhone,
+                    whatsappLink: whatsappLink,
+                    imageUrl: imageUrl,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log("Product added with ID:", docRef.id);
+
+                // Display the public URL
+                document.getElementById('publicUrl').value = imageUrl;
+                alert("Product details uploaded to Firebase.");
+            } catch (error) {
+                console.error("Error uploading product:", error);
+                alert("Error uploading product.");
+            }
+        }
+
+        // Copy the public URL to the clipboard
+        function copyUrl() {
+            const publicUrlField = document.getElementById("publicUrl");
+            if (publicUrlField.value) {
+                publicUrlField.select();
+                document.execCommand("copy");
+                alert("URL copied to clipboard");
+            } else {
+                alert("No URL to copy!");
+            }
+        }
+    </script>
 </body>
 </html>
