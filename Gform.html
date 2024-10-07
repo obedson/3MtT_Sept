@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Product to Firebase</title>
-    
-    <!-- Use Firebase CDN for compatibility with script tags -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage.js"></script>
 </head>
 <body>
     <h2>Upload Product Information</h2>
@@ -32,7 +26,14 @@
     <input type="text" id="publicUrl" readonly>
     <button onclick="copyUrl()">Copy URL</button>
 
-    <script>
+    <!-- Use Firebase with ES module -->
+    <script type="module">
+        // Import Firebase modules from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
         // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
@@ -45,14 +46,14 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
 
         window.onload = function() {
             // Check the authentication state on page load
-            auth.onAuthStateChanged(user => {
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
                     console.log("User is signed in:", user.displayName);
                 } else {
@@ -63,8 +64,8 @@
 
         // Sign in the user using Firebase Auth (Google Sign-in)
         async function signIn() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            await auth.signInWithPopup(provider).then(result => {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider).then(result => {
                 console.log("Signed in as:", result.user.displayName);
             }).catch(error => {
                 console.error("Error signing in:", error);
@@ -73,10 +74,9 @@
 
         // Function to upload the product image to Firebase Storage
         async function uploadImage(file) {
-            const storageRef = storage.ref();
-            const fileRef = storageRef.child('products/' + file.name);
-            await fileRef.put(file);
-            return fileRef.getDownloadURL();
+            const fileRef = storageRef(storage, 'products/' + file.name);
+            await uploadBytes(fileRef, file);
+            return getDownloadURL(fileRef);
         }
 
         // Function to upload product details to Firestore
@@ -99,13 +99,13 @@
                 const whatsappLink = `https://wa.me/${sellerPhone.replace(/\D/g, '')}`;
 
                 // Add product to Firestore
-                const docRef = await db.collection('products').add({
+                const docRef = await addDoc(collection(db, 'products'), {
                     description: productDesc,
                     price: productPrice,
                     sellerPhone: sellerPhone,
                     whatsappLink: whatsappLink,
                     imageUrl: imageUrl,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 });
 
                 console.log("Product added with ID:", docRef.id);
