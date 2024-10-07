@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Product Details</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script> <!-- Load GIS script -->
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js"; // For Realtime Database
-        // import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js"; // Uncomment for Firestore
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js"></script>
 
-        // Your web app's Firebase configuration
+    <script>
+        // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
             authDomain: "mtt-d130b.firebaseapp.com",
@@ -23,107 +22,47 @@
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app); // For Realtime Database
-        // const db = getFirestore(app); // Uncomment for Firestore
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        let accessToken = '';  // This will hold the OAuth access token
-
-        // Load data from Google Sheets
-        async function loadGoogleSheetData() {
-            const SHEET_ID = '162AXvIrnTK0vG1zaEduHzls7mWuAerWmIUW7kD1LYTQ';  // Your Google Sheet ID
-            const SHEET_NAME = 'Sheet1';  // Your sheet name
-            
-            try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SHEET_ID,
-                    range: `${SHEET_NAME}!A:D`,  // Adjust range as needed
-                });
-                
-                const data = response.result.values;
-                if (data && data.length) {
-                    displayGoogleSheetData(data);
-                } else {
-                    document.getElementById('productDetails').innerText = 'No data found.';
-                }
-            } catch (error) {
-                console.error('Error fetching data from Google Sheets:', error);
-                document.getElementById('productDetails').innerText = 'Error loading data from Google Sheets.';
-            }
-        }
-
-        // Display the retrieved product details from Google Sheets
-        function displayGoogleSheetData(data) {
-            const productDetailsDiv = document.getElementById('productDetails');
-            productDetailsDiv.innerHTML = '';  // Clear previous content
-            data.forEach((row, index) => {
-                const productInfo = `Row ${index + 1}: ${row.join(', ')}`;
-                productDetailsDiv.innerHTML += `<p>${productInfo}</p>`;
-            });
-        }
-
-        // Load data from Firebase
+        // Function to load product data from Firestore
         async function loadFirebaseData() {
             const productDetailsDiv = document.getElementById('productDetails');
-            productDetailsDiv.innerHTML = '';  // Clear previous content
+            productDetailsDiv.innerHTML = ''; // Clear previous content
             
             try {
-                // Fetch data from Realtime Database
-                const dbRef = ref(db, 'products'); // Replace 'products' with your actual database reference
-                const snapshot = await get(dbRef);
-
-                if (snapshot.exists()) {
-                    const products = snapshot.val(); // Get all products
-                    for (const key in products) {
-                        displayFirebaseData(products[key]); // Display each product
-                    }
-                } else {
+                const querySnapshot = await db.collection('products').get();
+                if (querySnapshot.empty) {
                     productDetailsDiv.innerText = 'No data found in Firebase.';
+                    return;
                 }
+
+                querySnapshot.forEach((doc) => {
+                    const product = doc.data();
+                    displayFirebaseData(product);
+                });
             } catch (error) {
                 console.error('Error fetching data from Firebase:', error);
                 productDetailsDiv.innerText = 'Error loading data from Firebase.';
             }
         }
 
-        // Display the retrieved product details from Firebase
-        function displayFirebaseData(data) {
+        // Function to display product details
+        function displayFirebaseData(product) {
             const productDetailsDiv = document.getElementById('productDetails');
-            const productInfo = `Description: ${data.description}, Price: ${data.price}, WhatsApp: <a href="${data.whatsapp}" target="_blank">${data.whatsapp}</a>, Image URL: <a href="${data.imageUrl}" target="_blank">${data.imageUrl}</a>`;
-            productDetailsDiv.innerHTML += `<p>${productInfo}</p>`;
+            const productInfo = `
+                <p>Description: ${product.description}</p>
+                <p>Price: ${product.price}</p>
+                <p>WhatsApp: <a href="${product.whatsappLink}" target="_blank">${product.whatsappLink}</a></p>
+                <p>Image URL: <a href="${product.imageUrl}" target="_blank">${product.imageUrl}</a></p>
+                <hr>
+            `;
+            productDetailsDiv.innerHTML += productInfo;
         }
 
-        // Handle the token response after user signs in
-        function handleCredentialResponse(response) {
-            accessToken = response.credential;  // Store the credential from GIS
-            gapi.load('client', initClient);  // Load GAPI client after successful sign-in
-        }
-
-        // Initialize GAPI client
-        function initClient() {
-            gapi.client.init({
-                apiKey: 'AIzaSyB5_Aa61tmrVMjJdllV7fukVB9ala-3s8M',  // Your API Key
-                discoveryDocs: [
-                    'https://sheets.googleapis.com/$discovery/rest?version=v4',
-                    'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
-                ],
-            }).then(() => {
-                loadGoogleSheetData(); // Load Google Sheets data after initializing the client
-                loadFirebaseData(); // Load Firebase data
-            }).catch(error => {
-                console.error('Error initializing GAPI client:', error);
-                document.getElementById('productDetails').innerText = 'Error initializing GAPI client.';
-            });
-        }
-
-        // Load the Google Identity Services (GIS) client and prompt sign-in
+        // Automatically load data when the page loads
         window.onload = function() {
-            google.accounts.id.initialize({
-                client_id: '14933292708-rtaukchv750vrf9ocbhd7p42h9618829.apps.googleusercontent.com',
-                callback: handleCredentialResponse
-            });
-
-            google.accounts.id.prompt();  // Show the sign-in prompt
+            loadFirebaseData();
         };
     </script>
 </head>
