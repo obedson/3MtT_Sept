@@ -51,22 +51,19 @@
         function displayFirebaseData(product) {
             const productDetailsDiv = document.getElementById('productDetails');
 
-            // Construct WhatsApp link with the correct format
+            // Ensure phone number is in the correct format for WhatsApp
             const whatsappLink = `https://wa.me/${product.sellerPhone.replace(/\D/g, '')}`;
 
             const productInfo = `
                 <img src="${product.imageUrl}" alt="Product Image" style="max-width: 300px; height: auto;">
                 <p><strong>Description:</strong> ${product.description}</p>
                 <p><strong>Price:</strong> ${product.price}</p>
-                <button onclick="redirectToWhatsApp('${whatsappLink}')">Buy Now</button>
+                <a href="${whatsappLink}" target="_blank">
+                    <button>Buy Now</button>
+                </a>
                 <hr>
             `;
             productDetailsDiv.innerHTML += productInfo;
-        }
-
-        // Function to redirect to the seller's WhatsApp
-        function redirectToWhatsApp(whatsappLink) {
-            window.open(whatsappLink, '_blank');
         }
 
         // Automatically load data when the page loads
