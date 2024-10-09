@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Product Details</title>
+    <link rel="stylesheet" href="styles.css">
     <!-- Firebase SDKs -->
     <script type="module">
         // Import Firebase modules
@@ -55,13 +56,14 @@
             const whatsappLink = `https://wa.me/${product.sellerPhone.replace(/\D/g, '')}`;
 
             const productInfo = `
-                <img src="${product.imageUrl}" alt="Product Image" style="max-width: 300px; height: auto;">
-                <p><strong>Description:</strong> ${product.description}</p>
-                <p><strong>Price:</strong> ${product.price}</p>
-                <a href="${whatsappLink}" target="_blank">
-                    <button>Buy Now</button>
-                </a>
-                <hr>
+                <div class="product-card">
+                    <img src="${product.imageUrl}" alt="Product Image" class="product-image">
+                    <p><strong>Description:</strong> ${product.description}</p>
+                    <p><strong>Price:</strong> ${product.price}</p>
+                    <a href="${whatsappLink}" target="_blank">
+                        <button class="buy-button">Buy Now</button>
+                    </a>
+                </div>
             `;
             productDetailsDiv.innerHTML += productInfo;
         }
@@ -73,7 +75,12 @@
     </script>
 </head>
 <body>
-    <h2>Product Details</h2>
-    <div id="productDetails"></div>
+    <header>
+        <h1>Our Products</h1>
+        <div class="search-bar-container">
+            <input type="text" id="searchBar" placeholder="Search for products..." class="search-bar">
+        </div>
+    </header>
+    <div id="productDetails" class="product-grid"></div>
 </body>
 </html>
