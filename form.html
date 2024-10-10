@@ -1,3 +1,4 @@
+<!-- form.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Product to Firebase</title>
     <link rel="stylesheet" href="css/style.css"> <!-- Link to external CSS -->
-    <!-- Firebase SDKs (non-ESM build) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -17,7 +18,7 @@
 
         <!-- Button for Google Sign-In -->
         <button id="signInBtn" class="google-btn">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" alt="Google Logo" class="google-logo">
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo" class="google-logo">
             Sign In with Google
         </button>
 
@@ -45,16 +46,16 @@
     </div>
 
     <script>
-        // Your Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
-            authDomain: "mtt-d130b.firebaseapp.com",
-            projectId: "mtt-d130b",
-            storageBucket: "mtt-d130b.appspot.com",
-            messagingSenderId: "103379427385",
-            appId: "1:103379427385:web:672ee6ff76784954082de8",
-            measurementId: "G-YXQCJLM1T9"
-        };
+    apiKey: "AIzaSyAT0sl_f26UP7MwIVxWJMvaz52_HodsSYY",
+    authDomain: "mtt-d130b.firebaseapp.com",
+    projectId: "mtt-d130b",
+    storageBucket: "mtt-d130b.appspot.com",
+    messagingSenderId: "103379427385",
+    appId: "1:103379427385:web:672ee6ff76784954082de8",
+    measurementId: "G-YXQCJLM1T9"
+};
 
         // Initialize Firebase
         const app = firebase.initializeApp(firebaseConfig);
@@ -62,15 +63,40 @@
         const db = firebase.firestore();
         const storage = firebase.storage();
 
-        // Google Sign-In triggered by user action
-        document.getElementById('signInBtn').addEventListener('click', async function () {
+        // Hide the form fields and show only the Sign-In button initially
+        const signInBtn = document.getElementById('signInBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const formFields = document.querySelectorAll('.form-group');
+
+        function toggleFormAccess(isAuthenticated) {
+            formFields.forEach(field => {
+                field.style.display = isAuthenticated ? 'block' : 'none';
+            });
+            uploadBtn.style.display = isAuthenticated ? 'block' : 'none';
+        }
+
+        // Initial state: form fields and upload button hidden
+        toggleFormAccess(false);
+
+        // Sign-in functionality
+        signInBtn.addEventListener('click', async function () {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                await auth.signInWithPopup(provider).then(result => {
-                    console.log("Signed in as:", result.user.displayName);
-                });
+                await auth.signInWithPopup(provider);
+                alert("Signed in successfully!");
             } catch (error) {
                 console.error("Error signing in:", error);
+            }
+        });
+
+        // Monitor user authentication state
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is authenticated: show form fields and upload button
+                toggleFormAccess(true);
+            } else {
+                // User is not authenticated: show only the sign-in button
+                toggleFormAccess(false);
             }
         });
 
@@ -112,7 +138,7 @@
                 });
 
                 console.log("Product added with ID:", docRef.id);
-                alert("Product details uploaded to Firebase.");
+                alert("Product details uploaded to Successfully.");
             } catch (error) {
                 console.error("Error uploading product:", error);
                 alert("Error uploading product.");
