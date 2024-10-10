@@ -23,7 +23,7 @@
         </button>
 
         <div class="form-group">
-            <label for="productDesc">Product Description:</label>
+            <label for="productDesc">Product Name & Description:</label>
             <input type="text" id="productDesc" placeholder="Enter product description" required>
         </div>
 
@@ -138,12 +138,20 @@
                 });
 
                 console.log("Product added with ID:", docRef.id);
-                alert("Product details uploaded to Successfully.");
+                alert("Product details uploaded Successfully.");
             } catch (error) {
                 console.error("Error uploading product:", error);
                 alert("Error uploading product.");
             }
         }
-    </script>
+        
+        // Function to clear all input fields
+        function clearInputFields() {
+            document.getElementById('productDesc').value = '';
+            document.getElementById('productPrice').value = '';
+            document.getElementById('sellerPhone').value = '';
+            document.getElementById('fileInput').value = ''; // Reset file input
+        }
+            </script>
 </body>
 </html>
